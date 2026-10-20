@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>Fila de Atendimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Open+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: identidade do dashboard Grupo GPS. Fundo cinza claro, cartões com contorno fino escuro, títulos em caixa alta pesada, azul marinho e azul vivo. Menu lateral em gaveta com degradê marinho. */
+:root{
+  --bg:#DDDDDD; --surface:#E9E9EA; --surface-2:#D4D6DA; --fg:#0A0A0A; --muted:#454B57;
+  --line:#1A1A1A; --hair:#B3B6BC;
+  --navy:#001A6B; --blue:#0038E0;
+  --accent:#001A6B; --on-accent:#FFFFFF;
+  --now-bg:#001A6B; --now-fg:#FFFFFF;
+  --focus:#0038E0; --bad:#B42318; --on-a:#FFFFFF;
+  --a0:#001A6B; --a1:#0038E0; --a2:#0E7490; --a3:#B45309; --a4:#7C3AED; --a5:#BE123C;
+  --side-1:#0F1F2E; --side-2:#06305A;
+  --display:'Archivo Black','Arial Black',Arial,sans-serif;
+  --body:'Open Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A1220; --surface:#0F1B2E; --surface-2:#162743; --fg:#EAF0FA; --muted:#A3B1C8;
+    --line:#3A4F73; --hair:#25375A;
+    --navy:#8FA9FF; --blue:#6C8DFF;
+    --accent:#2F5BFF; --on-accent:#FFFFFF;
+    --now-bg:#0038E0; --now-fg:#FFFFFF;
+    --focus:#9CC2FF; --bad:#FF8A7A; --on-a:#0A1220;
+    --a0:#8FA9FF; --a1:#5C86FF; --a2:#4FD1E8; --a3:#F5A524; --a4:#C39BFF; --a5:#FF7A9C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A1220; --surface:#0F1B2E; --surface-2:#162743; --fg:#EAF0FA; --muted:#A3B1C8;
+  --line:#3A4F73; --hair:#25375A;
+  --navy:#8FA9FF; --blue:#6C8DFF;
+  --accent:#2F5BFF; --on-accent:#FFFFFF;
+  --now-bg:#0038E0; --now-fg:#FFFFFF;
+  --focus:#9CC2FF; --bad:#FF8A7A; --on-a:#0A1220;
+  --a0:#8FA9FF; --a1:#5C86FF; --a2:#4FD1E8; --a3:#F5A524; --a4:#C39BFF; --a5:#FF7A9C;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0;
+}
+button,input{font-family:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1680px;margin:0 auto;padding-block:16px 56px}
+.muted{color:var(--muted)}
+
+/* Cabeçalho */
+.top{display:flex;align-items:center;gap:16px 24px;flex-wrap:wrap;padding-bottom:20px}
+.top-left{display:flex;align-items:center;gap:16px}
+.menu-btn{appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:700 14px var(--body)}
+.menu-btn svg{flex:none}
+.logo{display:flex;align-items:baseline;gap:6px;line-height:1;white-space:nowrap}
+.logo span{font:400 18px var(--body);letter-spacing:.01em;color:var(--muted)}
+.logo b{font:400 38px var(--display);letter-spacing:-.01em;color:var(--fg)}
+.titulo{flex:1 1 320px;min-width:0;text-align:center}
+.titulo h1{margin:0;font:400 clamp(22px,3.4vw,42px)/1.1 var(--display);text-transform:uppercase;text-wrap:balance}
+.titulo h1 .n{color:var(--navy)}
+.titulo p{margin:6px 0 0;font:600 14px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.titulo p b{color:var(--blue)}
+.top::after{content:"";flex:0 1 160px}
+
+/* Gaveta de navegação */
+.scrim{position:fixed;inset:0;z-index:30;background:rgba(0,10,25,.55)}
+.drawer{position:fixed;z-index:31;top:0;bottom:0;left:0;width:min(300px,86vw);display:flex;flex-direction:column;gap:14px;
+  padding:calc(24px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+  background:linear-gradient(180deg,var(--side-1),var(--side-2));color:#fff;border-radius:0 32px 32px 0;overflow-y:auto}
+.drawer .logo span{color:#C9D5E6}
+.drawer .logo b{color:#fff}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.drawer-close{appearance:none;cursor:pointer;width:44px;height:44px;border-radius:12px;border:1px solid #000;background:rgba(0,0,0,.35);color:#fff;font-size:20px}
+.nav-item{appearance:none;cursor:pointer;text-align:center;min-height:64px;padding:14px 16px;border-radius:18px;border:1px solid #000;background:rgba(0,0,0,.28);color:#fff;font:400 15px var(--display);letter-spacing:.02em}
+.nav-item[aria-current="page"]{background:#001228;box-shadow:inset 0 0 0 2px #3F6BFF}
+.drawer .nav-item:focus-visible,.drawer-close:focus-visible{outline-color:#fff}
+
+.aviso{background:var(--navy);color:var(--bg);padding:12px 16px;border-radius:10px;margin-bottom:16px;font-weight:700}
+h2.sec{margin:0 0 12px;font:400 16px/1.2 var(--display);text-transform:uppercase;letter-spacing:.01em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.empty{padding:20px 0;color:var(--muted)}
+.err{margin:0 0 12px;color:var(--bad);font-weight:700}
+
+.btn{appearance:none;cursor:pointer;min-height:48px;padding:10px 20px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:700 15px var(--body);white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.btn.sm{min-height:40px;padding:8px 14px;font-size:14px}
+.btn.danger{color:var(--bad)}
+.btn.big{width:100%;min-height:72px;font:400 22px var(--display);text-transform:uppercase;letter-spacing:.01em}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Ser atendido */
+.kiosk{display:grid;grid-template-columns:minmax(300px,1fr) minmax(0,1.6fr);gap:28px;align-items:start}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{font:700 12px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.field input{width:100%;min-height:56px;padding:10px 14px;font:600 18px var(--body);color:var(--fg);background:var(--bg);border:2px solid var(--hair);border-radius:10px}
+.field input:focus{border-color:var(--blue)}
+.check{display:flex;gap:12px;align-items:flex-start;padding:14px;background:var(--bg);border:2px solid var(--hair);border-radius:10px;cursor:pointer}
+.check input{flex:none;width:24px;height:24px;margin:2px 0 0;accent-color:var(--blue)}
+.check b{display:block}
+.check span{display:block;color:var(--muted);font-size:14px}
+.areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px;margin-bottom:16px}
+.area{appearance:none;text-align:left;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 14px;align-items:center;min-height:92px;padding:14px 16px;color:var(--fg);background:var(--surface);border:2px solid var(--hair);border-radius:14px}
+.area[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--fg);background:color-mix(in srgb,var(--ac) 14%,var(--surface))}
+.area-letter{grid-row:1 / span 2;display:grid;place-items:center;width:56px;height:56px;border-radius:10px;background:var(--ac);color:var(--on-a);font:400 26px var(--display)}
+.area-letter.sm{width:36px;height:36px;font-size:16px;grid-row:auto}
+.area-name{align-self:end;font:400 15px/1.2 var(--display);text-transform:uppercase;overflow-wrap:break-word;hyphens:auto}
+.area-count{align-self:start;font-size:13px;color:var(--muted)}
+
+/* Bilhete da senha */
+.stub-shell{max-width:560px;margin:8px auto 0}
+.stub{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px}
+.stub-head{margin:-24px -24px 12px;padding:12px 24px;border-radius:9px 9px 0 0;background:var(--ac);color:var(--on-a);font:400 15px var(--display);letter-spacing:.12em;text-transform:uppercase}
+.stub-code{font:400 clamp(64px,16vw,120px)/1.05 var(--display);text-align:center}
+.stub-area{text-align:center;font:400 20px/1.2 var(--display);text-transform:uppercase;text-wrap:balance;overflow-wrap:break-word}
+.cut{position:relative;margin:22px -24px;border-top:2px dashed var(--hair)}
+.cut::before,.cut::after{content:"";position:absolute;top:-12px;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid var(--line)}
+.cut::before{left:-11px}
+.cut::after{right:-11px}
+.stub-data{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;margin:0 0 16px}
+.stub-data dt{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stub-data dd{margin:0;font-weight:700;text-align:right;overflow-wrap:anywhere}
+.stub-state{display:flex;flex-direction:column;gap:2px;padding:14px 16px;background:var(--bg);border-radius:10px}
+.stub-state strong{font:400 17px/1.2 var(--display);text-transform:uppercase}
+.stub-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+
+/* Gerência */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:24px}
+.stat{padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.stat span{display:block;font:700 13px var(--body)}
+.stat b{display:block;margin-top:4px;font:400 38px/1.1 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.gerencia{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
+.gerencia>div{min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 14px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:999px;font:700 13px var(--body);white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.chip .n{font:500 12px var(--mono)}
+.proxima{padding-bottom:14px;margin-bottom:2px;border-bottom:1px solid var(--hair)}
+.proxima .btn{width:100%;overflow:hidden;text-overflow:ellipsis}
+.list{list-style:none;margin:0;padding:0}
+.fila-card{container:fila / inline-size}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 16px;align-items:center;padding:14px 0;border-top:1px solid var(--hair)}
+.list>.row:first-child{border-top:0}
+.code{display:flex;align-items:center;gap:8px;min-width:92px;font:400 26px/1 var(--display);white-space:nowrap}
+.dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--ac)}
+.who{min-width:0}
+.who strong{display:block;overflow-wrap:anywhere}
+.sub{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+.wait{font:500 12px var(--mono);color:var(--muted);white-space:nowrap}
+.badge{padding:3px 8px;border-radius:6px;background:var(--blue);color:#fff;font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+@container fila (max-width:640px){
+  .row{grid-template-columns:auto minmax(0,1fr)}
+  .row .actions{grid-column:1 / -1;justify-content:flex-start}
+}
+
+/* Em atendimento: cartões que se reorganizam */
+.calls{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:12px}
+.calls .empty{grid-column:1 / -1;padding:8px 0}
+.call-card{display:flex;flex-direction:column;gap:6px;min-width:0;padding:14px;background:var(--bg);border:1px solid var(--hair);border-left:6px solid var(--ac);border-radius:12px}
+.call-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+.call-top .code{min-width:0}
+.call-nome{font-size:16px;overflow-wrap:anywhere}
+.call-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.call-actions .btn{flex:1 1 auto}
+
+details.card{margin-top:20px}
+details summary{cursor:pointer;font:400 15px var(--display);text-transform:uppercase}
+.arow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--hair)}
+.arow-nome{font-weight:700;overflow-wrap:anywhere}
+.form-area{display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:10px;margin-top:14px}
+.form-area .field{margin:0}
+.form-area .field input{min-height:48px;font-size:16px}
+.form-area .btn{grid-column:1 / -1}
+#a-letra{text-transform:uppercase;text-align:center}
+
+/* Painel de chamados */
+.painel-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;margin-bottom:18px}
+.clock{font:400 clamp(28px,3.4vw,46px)/1 var(--display);font-variant-numeric:tabular-nums}
+.clock small{display:block;margin-top:6px;font:600 13px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.painel-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.board{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr);gap:24px;align-items:stretch}
+.board>*{min-width:0}
+.now{display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:clamp(320px,56vh,700px);padding:clamp(22px,3.5vw,56px);border-radius:18px;background:var(--now-bg);color:var(--now-fg)}
+.now.idle{background:var(--surface);color:var(--fg);border:1px solid var(--line)}
+.now .lbl{font:400 clamp(14px,1.6vw,24px) var(--display);letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+.now .big{font:400 clamp(64px,11vw,190px)/1 var(--display)}
+.now .nm{font:400 clamp(26px,3.8vw,64px)/1.1 var(--display);text-transform:uppercase;overflow-wrap:break-word;text-wrap:balance}
+.now .ar{margin-top:6px;font:600 clamp(20px,2.6vw,40px)/1.15 var(--body);overflow-wrap:break-word}
+.now.flash{animation:pulse 1.2s ease-in-out 6}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--blue) 40%,transparent)}}
+.recent .row{padding:14px 4px}
+.recent .code{font-size:clamp(24px,2.6vw,38px);min-width:0}
+.recent .who strong{font-size:clamp(15px,1.5vw,22px)}
+.recent .sub{font-size:clamp(13px,1.2vw,17px)}
+.recent .wait{font-size:clamp(12px,1.1vw,16px)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;max-width:min(92vw,520px);padding:12px 18px;border-radius:10px;background:var(--fg);color:var(--bg);font-weight:700;text-align:center}
+
+@media (max-width:1100px){
+  .gerencia{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:960px){
+  .kiosk,.board{grid-template-columns:minmax(0,1fr)}
+  .top::after{display:none}
+}
+@media (max-width:560px){
+  .logo b{font-size:30px}
+  .titulo{flex-basis:100%;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  .now.flash{animation:none;outline:6px solid var(--fg);outline-offset:-6px}
+}
+.g-bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.login{max-width:440px;margin:24px auto}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="top-left">
+      <button id="btn-menu" class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="drawer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Menu
+      </button>
+      <div class="logo" aria-label="Grupo GPS"><span>GRUPO</span><b>GPS</b></div>
+    </div>
+    <div class="titulo">
+      <h1>Fila de <span class="n">Atendimento</span></h1>
+      <p><b id="tela-nome"></b> · <span id="data-hoje"></span></p>
+    </div>
+  </header>
+
+  <div id="scrim" class="scrim" hidden></div>
+  <nav id="drawer" class="drawer" aria-label="Telas do sistema" hidden>
+    <div class="drawer-head">
+      <div class="logo"><span>GRUPO</span><b>GPS</b></div>
+      <button id="drawer-close" class="drawer-close" type="button" aria-label="Fechar menu">✕</button>
+    </div>
+    <button class="nav-item" type="button" data-view="atendimento">Ser atendido</button>
+    <button class="nav-item" type="button" data-view="gerencia">Gerência</button>
+    <button class="nav-item" type="button" data-view="painel">Painel de chamados</button>
+  </nav>
+
+  <div id="aviso" class="aviso" role="alert" hidden></div>
+
+  <!-- Ser atendido -->
+  <section id="v-atendimento" aria-label="Ser atendido">
+    <div id="kiosk">
+      <form id="form" class="kiosk" novalidate autocomplete="off">
+        <div>
+          <h2 class="sec">Seus dados</h2>
+          <div class="card">
+            <div class="field">
+              <label for="f-nome">Nome completo</label>
+              <input id="f-nome" type="text" maxlength="80" autocapitalize="words" placeholder="Como devemos chamar você?">
+            </div>
+            <div class="field">
+              <label for="f-tel">Telefone (opcional)</label>
+              <input id="f-tel" type="tel" inputmode="tel" maxlength="20" placeholder="(11) 90000-0000">
+            </div>
+            <div class="field">
+              <label for="f-assunto">Assunto (opcional)</label>
+              <input id="f-assunto" type="text" maxlength="120" placeholder="Ex.: segunda via de boleto">
+            </div>
+            <label class="check" for="f-prio">
+              <input id="f-prio" type="checkbox">
+              <div><b>Atendimento prioritário</b><span>Idosos, gestantes, lactantes, pessoas com deficiência ou com criança de colo.</span></div>
+            </label>
+          </div>
+        </div>
+        <div>
+          <h2 class="sec">Área de atendimento</h2>
+          <div id="area-grid" class="areas"></div>
+          <p id="form-err" class="err" role="alert" hidden></p>
+          <button id="btn-senha" class="btn primary big" type="submit">Retirar senha</button>
+        </div>
+      </form>
+    </div>
+    <div id="stub-wrap" hidden></div>
+  </section>
+
+  <!-- Gerência -->
+  <section id="v-gerencia" aria-label="Gerência" hidden>
+    <div id="g-login" class="login card" hidden>
+      <h2 class="sec">Entrar na gerência</h2>
+      <form id="form-login" novalidate>
+        <div class="field">
+          <label for="l-email">E-mail</label>
+          <input id="l-email" type="email" autocomplete="username" inputmode="email">
+        </div>
+        <div class="field">
+          <label for="l-senha">Senha</label>
+          <input id="l-senha" type="password" autocomplete="current-password">
+        </div>
+        <p id="login-err" class="err" role="alert" hidden></p>
+        <button class="btn primary" type="submit" style="width:100%">Entrar</button>
+      </form>
+    </div>
+    <div id="g-conteudo">
+    <div id="g-bar" class="g-bar" hidden>
+      <span class="muted">Conectado como <b id="g-user"></b></span>
+      <button id="btn-sair" class="btn sm" type="button">Sair</button>
+    </div>
+    <div id="stats" class="stats"></div>
+    <div class="gerencia">
+      <div>
+        <h2 class="sec">Fila de espera</h2>
+        <div id="chips" class="chips"></div>
+        <div class="card fila-card">
+          <div class="proxima"><button id="btn-prox" class="btn primary" type="button">Chamar próxima</button></div>
+          <ul id="fila" class="list"></ul>
+        </div>
+      </div>
+      <div>
+        <h2 class="sec">Em atendimento</h2>
+        <div class="card"><ul id="atendimento" class="calls"></ul></div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- Painel de chamados -->
+  <section id="v-painel" aria-label="Painel de chamados" hidden>
+    <div class="painel-bar">
+      <div class="clock" id="clock"></div>
+      <div class="painel-ctl">
+        <span id="espera-info" class="muted"></span>
+        <button id="btn-som" class="btn sm primary" type="button">Ativar som e voz</button>
+        <button id="btn-teste" class="btn sm" type="button" hidden>Testar voz</button>
+        <button id="btn-full" class="btn sm" type="button" hidden>Tela cheia</button>
+      </div>
+    </div>
+    <div class="board">
+      <div id="now"></div>
+      <aside>
+        <h2 class="sec">Últimas chamadas</h2>
+        <div class="card"><ul id="recentes" class="list recent"></ul></div>
+      </aside>
+    </div>
+  </section>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module">
+import { firebaseConfig } from './firebase-config.js';
+
+/* ---------- Conexão com o Firebase (Firestore + login da gerência) ---------- */
+async function conectar(){
+  const cfg = firebaseConfig || {};
+  if (!cfg.apiKey || /^COLE/i.test(String(cfg.apiKey))) throw new Error('Preencha o arquivo firebase-config.js (veja o README).');
+  const base = 'https://www.gstatic.com/firebasejs/10.14.1/';
+  const [appM, fsM, authM] = await Promise.all([
+    import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js'), import(base + 'firebase-auth.js')
+  ]);
+  const app = appM.initializeApp(cfg);
+  const fs = fsM.getFirestore(app);
+  const auth = authM.getAuth(app);
+
+  const wrapDoc = ref => ({
+    id: ref.id,
+    get: () => fsM.getDoc(ref),
+    set: d => fsM.setDoc(ref, d),
+    update: d => fsM.updateDoc(ref, d),
+    delete: () => fsM.deleteDoc(ref),
+    onSnapshot: (next, err) => fsM.onSnapshot(ref, next, err)
+  });
+  const Q = (b, cons) => ({
+    orderBy: (f, d) => Q(b, [...cons, fsM.orderBy(f, d || 'asc')]),
+    limit: n => Q(b, [...cons, fsM.limit(n)]),
+    get: () => fsM.getDocs(fsM.query(b, ...cons)),
+    onSnapshot: (next, err) => fsM.onSnapshot(fsM.query(b, ...cons), next, err)
+  });
+  return {
+    privado: true,
+    doc: path => wrapDoc(fsM.doc(fs, path)),
+    collection: path => {
+      const c = fsM.collection(fs, path);
+      return Object.assign(Q(c, []), {
+        add: async d => wrapDoc(await fsM.addDoc(c, d)),
+        doc: id => wrapDoc(id ? fsM.doc(c, id) : fsM.doc(c))
+      });
+    },
+    proximoNumero: (areaId, dia) => fsM.runTransaction(fs, async tx => {
+      const ref = fsM.doc(fs, 'contadores', areaId);
+      const s = await tx.get(ref);
+      const d = s.exists() ? s.data() : {};
+      const n = (d.dia === dia ? (d.ultimo || 0) : 0) + 1;
+      tx.set(ref, { dia, ultimo: n });
+      return n;
+    }),
+    auth: {
+      onChange: cb => authM.onAuthStateChanged(auth, u => cb(u && u.email ? u.email : null)),
+      login: (email, senha) => authM.signInWithEmailAndPassword(auth, email, senha),
+      logout: () => authM.signOut(auth)
+    }
+  };
+}
+(function(){
+'use strict';
+
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)){
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style') e.setAttribute('style', v);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : String(v));
+  }
+  for (const kid of kids.flat()){ if (kid == null || kid === false) continue; e.append(kid); }
+  return e;
+}
+const ls = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+};
+const pad = n => String(n).padStart(2, '0');
+const hoje = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const hora = ms => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function dur(ms){
+  const m = Math.max(0, Math.floor(ms / 60000));
+  if (m < 1) return '< 1 min';
+  if (m < 60) return m + ' min';
+  return Math.floor(m / 60) + ' h ' + pad(m % 60) + ' min';
+}
+const NOMES = { atendimento: 'Ser atendido', gerencia: 'Gerência', painel: 'Painel de chamados' };
+
+/* Áreas da empresa (fixas). Os ids são os mesmos já usados nas senhas e contadores. */
+const AREAS = [
+  { id: '378pbs0109ozoh1m1bkf', letra: 'P',  nome: 'Projetos', cor: 0 },
+  { id: 'e4h6pfq0hunluu4luid6', letra: 'C',  nome: 'Contas a pagar', cor: 1 },
+  { id: 'lzizh680yoo3a8ki0aoh', letra: 'CR', nome: 'Contas a receber', cor: 2 },
+  { id: '3vajjao2p1rslqmudqfa', letra: 'F',  nome: 'Faturamento', cor: 3 },
+  { id: 'b3jikyk1zwd4p0a4by50', letra: 'PL', nome: 'Planejamento', cor: 4 },
+  { id: 'truvl7ffzhy56cm14e9m', letra: 'S',  nome: 'SESMT', cor: 5 },
+  { id: 'bxvuw5tfg1jvfkdzazk6', letra: 'CO', nome: 'Comercial', cor: 0 },
+  { id: 'u9wxc6x96tl1n6x9bsgo', letra: 'O',  nome: 'Operação', cor: 1 },
+  { id: 's5kcp7bw08lx1glpcfnl', letra: 'SP', nome: 'Suprimentos', cor: 2 },
+  { id: 'v0b7coql0iua74n2yu96', letra: 'FR', nome: 'Frotas', cor: 3 },
+  { id: '9vwiud18yacikockzx5l', letra: 'DO', nome: 'Desenvolvimento organizacional', cor: 4 }
+];
+
+const S = {
+  db: null, contatos: {}, gerente: null, areas: AREAS, areasLoaded: true, senhas: [], senhasLoaded: false,
+  view: 'atendimento', filtro: 'todas', areaSel: null, busy: false,
+  pend: new Set(), conf: null, confT: null,
+  stubId: null, stubDoc: null, stubStart: 0, stubTimer: null,
+  flashUntil: 0, nowKey: ''
+};
+
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 5000);
+}
+function aviso(msg){ const a = $('#aviso'); a.textContent = msg; a.hidden = !msg; }
+const msgErro = () => 'Não foi possível salvar. Confira a conexão e se você tem permissão para editar este painel.';
+
+/* ---------- dados derivados ---------- */
+const cmpFila = (a, b) => (b.prioritaria ? 1 : 0) - (a.prioritaria ? 1 : 0) || a.criadoEm - b.criadoEm;
+function derivar(){
+  const por = st => S.senhas.filter(t => t.status === st);
+  return {
+    aguard: por('aguardando').sort(cmpFila),
+    chamadas: por('chamada').sort((a, b) => b.chamadaEm - a.chamadaEm),
+    atendidas: por('atendida')
+  };
+}
+const corDe = t => { const a = S.areas.find(x => x.id === t.areaId); return ((a && a.cor) || 0) % 6; };
+const acVar = t => '--ac:var(--a' + corDe(t) + ')';
+
+/* ---------- numeração das senhas (uma sequência por área, reinicia a cada dia) ---------- */
+async function proximoNumero(areaId){
+  if (S.db.proximoNumero) return S.db.proximoNumero(areaId, hoje());
+  const ref = S.db.doc('contadores/' + areaId);
+  const holder = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  for (let i = 0; i < 8; i++){
+    const r = await ref.acquire({ holder, ttlMs: 1000 });
+    if (r.acquired){
+      const snap = await ref.get();
+      const d = snap.exists ? snap.data() : {};
+      const dia = hoje();
+      const n = (d.dia === dia ? (d.ultimo || 0) : 0) + 1;
+      try { await ref.update({ dia, ultimo: n }); } catch(e){ await ref.set({ dia, ultimo: n }); }
+      return n;
+    }
+    await sleep(350 + Math.random() * 400);
+  }
+  return S.senhas.filter(t => t.areaId === areaId).length + 1;
+}
+
+/* ---------- Ser atendido ---------- */
+let areaKey = '';
+function renderAreaGrid(){
+  const box = $('#area-grid');
+  const key = S.areas.map(a => [a.id, a.nome, a.letra, a.cor].join('~')).join('|') + (S.areasLoaded ? 'L' : '');
+  if (key !== areaKey){
+    areaKey = key; box.replaceChildren();
+    if (!S.areas.length){
+      box.append(h('p', { class: 'empty' }, S.areasLoaded
+        ? 'Nenhuma área cadastrada. Peça à gerência para cadastrar as áreas na tela Gerência.'
+        : 'Carregando áreas…'));
+      return;
+    }
+    S.areas.forEach(a => {
+      box.append(h('button', {
+        type: 'button', class: 'area', 'data-id': a.id, 'aria-pressed': 'false',
+        style: '--ac:var(--a' + ((a.cor || 0) % 6) + ')',
+        onclick: () => { S.areaSel = a.id; $('#form-err').hidden = true; renderAreaGrid(); }
+      },
+        h('span', { class: 'area-letter' }, a.letra),
+        h('span', { class: 'area-name' }, a.nome),
+        h('span', { class: 'area-count' }, '')));
+    });
+  }
+  const aguard = derivar().aguard;
+  box.querySelectorAll('.area').forEach(b => {
+    const id = b.dataset.id;
+    const n = aguard.filter(t => t.areaId === id).length;
+    b.querySelector('.area-count').textContent = n === 0 ? 'Sem fila' : (n === 1 ? '1 pessoa na fila' : n + ' pessoas na fila');
+    b.setAttribute('aria-pressed', S.areaSel === id ? 'true' : 'false');
+  });
+}
+
+function erroForm(msg){ const e = $('#form-err'); e.textContent = msg; e.hidden = false; }
+
+async function retirarSenha(ev){
+  ev.preventDefault();
+  if (S.busy) return;
+  if (!S.db){ erroForm('Sem conexão com a fila. Recarregue a página.'); return; }
+  const nome = $('#f-nome').value.trim().replace(/\s+/g, ' ');
+  const tel = $('#f-tel').value.trim();
+  const assunto = $('#f-assunto').value.trim();
+  const prio = $('#f-prio').checked;
+  const area = S.areas.find(a => a.id === S.areaSel);
+  if (nome.length < 2){ erroForm('Digite seu nome completo.'); $('#f-nome').focus(); return; }
+  if (!area){ erroForm('Escolha a área em que você quer ser atendido.'); return; }
+  S.busy = true;
+  const btn = $('#btn-senha'); btn.disabled = true; btn.textContent = 'Gerando senha…';
+  $('#form-err').hidden = true;
+  try {
+    const numero = await proximoNumero(area.id);
+    const codigo = area.letra + String(numero).padStart(3, '0');
+    const doc = {
+      codigo, numero, letra: area.letra, areaId: area.id, areaNome: area.nome,
+      nome, prioritaria: prio, status: 'aguardando',
+      dia: hoje(), criadoEm: Date.now(), chamadaEm: 0, primeiraChamadaEm: 0, vezes: 0
+    };
+    if (!S.db.privado) Object.assign(doc, { telefone: tel, assunto });
+    const ref = await S.db.collection('senhas').add(doc);
+    if (S.db.privado && (tel || assunto)){ try { await S.db.doc('contatos/' + ref.id).set({ telefone: tel, assunto }); } catch(e){} }
+    S.stubId = ref.id; S.stubDoc = doc;
+    $('#form').reset(); S.areaSel = null;
+    mostrarStub();
+  } catch(e){
+    erroForm(msgErro(e));
+  } finally {
+    S.busy = false; btn.disabled = false; btn.textContent = 'Retirar senha';
+  }
+}
+
+function mostrarStub(){
+  $('#kiosk').hidden = true; $('#stub-wrap').hidden = false;
+  S.stubStart = Date.now();
+  clearInterval(S.stubTimer);
+  S.stubTimer = setInterval(() => {
+    const left = Math.max(0, 25 - Math.floor((Date.now() - S.stubStart) / 1000));
+    const cd = $('#cd'); if (cd) cd.textContent = String(left);
+    if (left <= 0) fecharStub();
+  }, 1000);
+  renderStub(); window.scrollTo(0, 0);
+}
+function fecharStub(){
+  clearInterval(S.stubTimer);
+  S.stubId = null; S.stubDoc = null;
+  $('#stub-wrap').hidden = true; $('#kiosk').hidden = false;
+  renderAreaGrid();
+}
+function renderStub(){
+  if (!S.stubId) return;
+  const t = S.senhas.find(x => x.id === S.stubId) || S.stubDoc;
+  const d = derivar();
+  let estado;
+  if (t.status === 'chamada'){
+    estado = ['Sua senha foi chamada', 'Dirija-se ao setor ' + t.areaNome + '.'];
+  } else if (t.status === 'aguardando'){
+    const frente = d.aguard.filter(x => x.areaId === t.areaId && x.id !== S.stubId && cmpFila(x, t) < 0).length;
+    estado = frente === 0
+      ? ['Você é o próximo da fila', 'Fique atento ao painel de chamadas.']
+      : ['Pessoas na sua frente: ' + frente, 'Acompanhe pelo painel de chamadas.'];
+  } else {
+    estado = ['Senha encerrada', ''];
+  }
+  const left = Math.max(0, 25 - Math.floor((Date.now() - S.stubStart) / 1000));
+  $('#stub-wrap').replaceChildren(
+    h('div', { class: 'stub-shell' },
+      h('div', { class: 'stub', style: acVar(t) },
+        h('div', { class: 'stub-head' }, 'Sua senha'),
+        h('div', { class: 'stub-code' }, t.codigo),
+        h('div', { class: 'stub-area' }, t.areaNome),
+        h('div', { class: 'cut' }),
+        h('dl', { class: 'stub-data' },
+          h('dt', null, 'Nome'), h('dd', null, t.nome),
+          h('dt', null, 'Retirada às'), h('dd', null, hora(t.criadoEm)),
+          t.prioritaria ? h('dt', null, 'Tipo') : null, t.prioritaria ? h('dd', null, 'Prioritário') : null),
+        h('div', { class: 'stub-state' }, h('strong', null, estado[0]), h('span', null, estado[1]))),
+      h('div', { class: 'stub-foot' },
+        h('button', { type: 'button', class: 'btn primary', onclick: fecharStub }, 'Concluir'),
+        h('span', { class: 'muted' }, 'Voltando ao início em ', h('span', { id: 'cd' }, String(left)), ' s'))));
+}
+
+/* ---------- Gerência ---------- */
+async function acao(id, fn){
+  if (S.pend.has(id)) return;
+  S.pend.add(id);
+  try { await fn(); } catch(e){ toast(msgErro(e)); } finally { S.pend.delete(id); }
+}
+function pedirConfirmacao(key, fn){
+  if (S.conf === key){ S.conf = null; clearTimeout(S.confT); fn(); return; }
+  S.conf = key; renderGerencia();
+  clearTimeout(S.confT);
+  S.confT = setTimeout(() => { S.conf = null; if (S.view === 'gerencia') renderGerencia(); }, 4000);
+}
+async function chamar(t){
+  const agora = Date.now();
+  const patch = { status: 'chamada', chamadaEm: agora, vezes: (t.vezes || 0) + 1 };
+  if (!t.primeiraChamadaEm) patch.primeiraChamadaEm = agora;
+  await S.db.doc('senhas/' + t.id).update(patch);
+}
+async function mudar(t, status){
+  await S.db.doc('senhas/' + t.id).update({ status, fimEm: Date.now() });
+}
+function listaFila(){
+  const base = derivar().aguard;
+  return S.filtro === 'todas' ? base : base.filter(t => t.areaId === S.filtro);
+}
+
+function renderStats(){
+  const d = derivar();
+  const esperas = S.senhas.filter(t => t.primeiraChamadaEm).map(t => t.primeiraChamadaEm - t.criadoEm);
+  const media = esperas.length ? esperas.reduce((a, b) => a + b, 0) / esperas.length : null;
+  const itens = [
+    ['Aguardando', d.aguard.length], ['Em atendimento', d.chamadas.length],
+    ['Atendidas hoje', d.atendidas.length], ['Espera média', media == null ? '—' : dur(media)]
+  ];
+  $('#stats').replaceChildren(...itens.map(([l, v]) => h('div', { class: 'stat' }, h('span', null, l), h('b', null, String(v)))));
+}
+function renderChips(){
+  const d = derivar();
+  const chips = [h('button', {
+    type: 'button', class: 'chip', 'aria-pressed': S.filtro === 'todas' ? 'true' : 'false',
+    onclick: () => { S.filtro = 'todas'; renderGerencia(); }
+  }, 'Todas', h('span', { class: 'n' }, String(d.aguard.length)))];
+  S.areas.forEach(a => {
+    const n = d.aguard.filter(t => t.areaId === a.id).length;
+    chips.push(h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': S.filtro === a.id ? 'true' : 'false',
+      onclick: () => { S.filtro = a.id; renderGerencia(); }
+    }, a.nome, h('span', { class: 'n' }, String(n))));
+  });
+  $('#chips').replaceChildren(...chips);
+}
+function renderFila(){
+  const ul = $('#fila'); ul.replaceChildren();
+  const lista = listaFila(); const prox = lista[0];
+  const b = $('#btn-prox'); b.disabled = !prox;
+  b.textContent = prox ? 'Chamar próxima · ' + prox.codigo + ' ' + prox.nome : 'Chamar próxima';
+  if (!lista.length){
+    ul.append(h('li', { class: 'empty' }, S.senhasLoaded ? 'Ninguém aguardando agora.' : 'Carregando fila…'));
+    return;
+  }
+  lista.forEach(t => {
+    ul.append(h('li', { class: 'row', style: acVar(t) },
+      h('div', { class: 'code' }, h('span', { class: 'dot' }), t.codigo),
+      h('div', { class: 'who' }, h('strong', null, t.nome),
+        h('div', { class: 'sub' }, [t.areaNome, t.assunto, t.telefone].filter(Boolean).join(' · '))),
+      h('div', { class: 'actions' },
+        t.prioritaria ? h('span', { class: 'badge' }, 'Prioritária') : null,
+        h('span', { class: 'wait' }, dur(Date.now() - t.criadoEm)),
+        h('button', { type: 'button', class: 'btn primary sm', onclick: () => acao(t.id, () => chamar(t)) }, 'Chamar'),
+        h('button', {
+          type: 'button', class: 'btn sm danger',
+          onclick: () => pedirConfirmacao('del:' + t.id, () => acao(t.id, () => mudar(t, 'cancelada')))
+        }, S.conf === 'del:' + t.id ? 'Confirmar' : 'Remover'))));
+  });
+}
+function renderEmAtendimento(){
+  const ul = $('#atendimento'); ul.replaceChildren();
+  const lista = derivar().chamadas;
+  if (!lista.length){ ul.append(h('li', { class: 'empty' }, 'Nenhuma senha em atendimento.')); return; }
+  lista.forEach(t => {
+    ul.append(h('li', { class: 'call-card', style: acVar(t) },
+      h('div', { class: 'call-top' },
+        h('div', { class: 'code' }, t.codigo),
+        h('span', { class: 'wait' }, 'chamada há ' + dur(Date.now() - t.chamadaEm))),
+      h('strong', { class: 'call-nome' }, t.nome),
+      h('div', { class: 'sub' }, t.areaNome),
+      h('div', { class: 'call-actions' },
+        h('button', { type: 'button', class: 'btn primary sm', onclick: () => acao(t.id, () => mudar(t, 'atendida')) }, 'Concluir'),
+        h('button', { type: 'button', class: 'btn sm', onclick: () => acao(t.id, () => chamar(t)) }, 'Chamar de novo'),
+        h('button', { type: 'button', class: 'btn sm danger', onclick: () => acao(t.id, () => mudar(t, 'ausente')) }, 'Não veio'))));
+  });
+}
+function renderGerencia(){
+  const comLogin = !!(S.db && S.db.auth);
+  const trancada = comLogin && !S.gerente;
+  $('#g-login').hidden = !trancada;
+  $('#g-conteudo').hidden = trancada;
+  if (trancada) return;
+  $('#g-bar').hidden = !comLogin;
+  $('#g-user').textContent = S.gerente || '';
+  renderStats(); renderChips(); renderFila(); renderEmAtendimento();
+}
+
+/* ---------- Voz ---------- */
+const Voz = { on: false, ok: false, q: [], busy: false, voice: null, ctx: null };
+try { Voz.ok = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'; } catch(e){}
+function escolherVoz(){
+  try {
+    const vs = speechSynthesis.getVoices();
+    Voz.voice = vs.find(v => /^pt[-_]BR/i.test(v.lang)) || vs.find(v => /^pt/i.test(v.lang)) || null;
+  } catch(e){}
+}
+if (Voz.ok){ try { speechSynthesis.onvoiceschanged = escolherVoz; } catch(e){} escolherVoz(); }
+
+function sino(){
+  try {
+    const c = Voz.ctx; if (!c) return 0;
+    const t = c.currentTime;
+    [[880, 0], [660, 0.3]].forEach(([f, d]) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(0.35, t + d + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.55);
+      o.connect(g); g.connect(c.destination);
+      o.start(t + d); o.stop(t + d + 0.6);
+    });
+    return 900;
+  } catch(e){ return 0; }
+}
+function dizer(texto, vezes){
+  return new Promise(res => {
+    if (!Voz.ok){ res(); return; }
+    let n = 0, feito = false;
+    const fim = () => { if (!feito){ feito = true; res(); } };
+    const uma = () => {
+      try {
+        const u = new SpeechSynthesisUtterance(texto);
+        u.lang = 'pt-BR'; u.rate = 0.92;
+        if (Voz.voice) u.voice = Voz.voice;
+        u.onend = () => { n++; if (n < vezes) setTimeout(uma, 700); else fim(); };
+        u.onerror = fim;
+        speechSynthesis.speak(u);
+      } catch(e){ fim(); }
+    };
+    uma();
+    setTimeout(fim, 30000 * vezes);
+  });
+}
+function textoDe(t){
+  if (t.teste) return 'Painel de chamadas ativado. As senhas serão anunciadas por voz.';
+  return 'Senha ' + t.letra + ' ' + t.numero + '. ' + t.nome + '. Dirija-se ao setor ' + t.areaNome + '.';
+}
+async function anunciar(){
+  if (Voz.busy) return;
+  Voz.busy = true;
+  while (Voz.q.length && Voz.on){
+    const t = Voz.q.shift();
+    await sleep(sino());
+    await dizer(textoDe(t), t.teste ? 1 : 2);
+    await sleep(500);
+  }
+  Voz.busy = false;
+}
+function ligarSom(){
+  Voz.on = true;
+  try { Voz.ctx = Voz.ctx || new (window.AudioContext || window.webkitAudioContext)(); Voz.ctx.resume(); } catch(e){}
+  escolherVoz(); renderSom();
+  Voz.q.unshift({ teste: true });
+  anunciar();
+}
+function desligarSom(){
+  Voz.on = false; Voz.q = [];
+  try { speechSynthesis.cancel(); } catch(e){}
+  renderSom();
+}
+function renderSom(){
+  const b = $('#btn-som'), t = $('#btn-teste');
+  if (!Voz.ok){ b.textContent = 'Voz indisponível neste navegador'; b.disabled = true; t.hidden = true; return; }
+  b.textContent = Voz.on ? 'Som ligado · desligar' : 'Ativar som e voz';
+  b.classList.toggle('primary', !Voz.on);
+  t.hidden = !Voz.on;
+}
+
+/* detecta chamadas novas e enfileira o anúncio */
+let base = null;
+function detectar(snap){
+  if (snap.metadata.fromCache) return;
+  const max = S.senhas.reduce((m, t) => Math.max(m, t.chamadaEm || 0), 0);
+  if (base === null){ base = max; return; }
+  const novas = S.senhas.filter(t => (t.chamadaEm || 0) > base).sort((a, b) => a.chamadaEm - b.chamadaEm);
+  if (!novas.length) return;
+  base = max;
+  S.flashUntil = Date.now() + 8000;
+  setTimeout(() => { if (S.view === 'painel') renderPainel(); }, 8100);
+  if (Voz.on){ novas.forEach(t => Voz.q.push(t)); anunciar(); }
+}
+
+/* ---------- Painel de chamados ---------- */
+function renderPainel(){
+  const d = derivar();
+  const cham = S.senhas.filter(t => t.chamadaEm > 0).sort((a, b) => b.chamadaEm - a.chamadaEm);
+  const atual = cham[0];
+  const box = $('#now');
+  const flash = Date.now() < S.flashUntil;
+  const key = atual ? atual.id + ':' + atual.chamadaEm : (S.senhasLoaded ? 'idle' : 'load');
+  if (key !== S.nowKey){
+    S.nowKey = key; box.replaceChildren();
+    if (!atual){
+      box.append(h('div', { class: 'now idle' },
+        h('div', { class: 'lbl' }, 'Painel de chamadas'),
+        h('div', { class: 'nm' }, S.senhasLoaded ? 'Aguardando a primeira chamada' : 'Carregando…')));
+    } else {
+      box.append(h('div', { class: 'now' + (flash ? ' flash' : '') },
+        h('div', { class: 'lbl' }, 'Chamando agora'),
+        h('div', { class: 'big' }, atual.codigo),
+        h('div', { class: 'nm' }, atual.nome),
+        h('div', { class: 'ar' }, 'Setor ' + atual.areaNome)));
+    }
+  } else if (!flash){
+    const el = $('#now .now'); if (el) el.classList.remove('flash');
+  }
+  const ul = $('#recentes'); ul.replaceChildren();
+  const ant = cham.slice(1, 8);
+  if (!ant.length) ul.append(h('li', { class: 'empty' }, 'As chamadas anteriores aparecem aqui.'));
+  ant.forEach(t => {
+    ul.append(h('li', { class: 'row', style: acVar(t) },
+      h('div', { class: 'code' }, h('span', { class: 'dot' }), t.codigo),
+      h('div', { class: 'who' }, h('strong', null, t.nome), h('div', { class: 'sub' }, t.areaNome)),
+      h('div', { class: 'wait' }, hora(t.chamadaEm))));
+  });
+  const n = d.aguard.length;
+  $('#espera-info').textContent = n === 0 ? 'Fila vazia' : (n === 1 ? '1 pessoa aguardando' : n + ' pessoas aguardando');
+  renderRelogio();
+}
+function renderRelogio(){
+  const d = new Date();
+  $('#clock').replaceChildren(hora(d.getTime()), h('small', null, d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })));
+}
+
+/* ---------- navegação e menu ---------- */
+let wake = null;
+async function manterTelaLigada(){
+  try { if ('wakeLock' in navigator && S.view === 'painel' && document.visibilityState === 'visible') wake = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+function abrirMenu(){
+  $('#drawer').hidden = false; $('#scrim').hidden = false;
+  $('#btn-menu').setAttribute('aria-expanded', 'true');
+  const atual = $('#drawer .nav-item[aria-current="page"]') || $('#drawer .nav-item');
+  atual.focus();
+}
+function fecharMenu(devolverFoco){
+  if ($('#drawer').hidden) return;
+  $('#drawer').hidden = true; $('#scrim').hidden = true;
+  $('#btn-menu').setAttribute('aria-expanded', 'false');
+  if (devolverFoco) $('#btn-menu').focus();
+}
+function setView(v){
+  if (!NOMES[v]) v = 'atendimento';
+  S.view = v; ls.set('fila-view', v);
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  ['atendimento', 'gerencia', 'painel'].forEach(x => { $('#v-' + x).hidden = x !== v; });
+  $('#tela-nome').textContent = NOMES[v];
+  S.nowKey = '';
+  renderAll();
+  if (v === 'painel') manterTelaLigada();
+}
+function renderAll(){
+  renderAreaGrid();
+  if (S.stubId) renderStub();
+  if (S.view === 'gerencia') renderGerencia();
+  if (S.view === 'painel') renderPainel();
+}
+
+/* ---------- inicialização ---------- */
+async function init(){
+  $('#data-hoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  $('#btn-menu').addEventListener('click', abrirMenu);
+  $('#drawer-close').addEventListener('click', () => fecharMenu(true));
+  $('#scrim').addEventListener('click', () => fecharMenu(true));
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharMenu(true); });
+  document.querySelectorAll('.nav-item').forEach(b => b.addEventListener('click', () => { setView(b.dataset.view); fecharMenu(true); }));
+
+  $('#form').addEventListener('submit', retirarSenha);
+  $('#form-login').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    if (!S.db || !S.db.auth) return;
+    const er = $('#login-err'); er.hidden = true;
+    try { await S.db.auth.login($('#l-email').value.trim(), $('#l-senha').value); $('#l-senha').value = ''; }
+    catch(e){ er.textContent = 'E-mail ou senha incorretos.'; er.hidden = false; }
+  });
+  $('#btn-sair').addEventListener('click', () => { if (S.db && S.db.auth) S.db.auth.logout(); });
+  $('#btn-prox').addEventListener('click', () => { const t = listaFila()[0]; if (t) acao(t.id, () => chamar(t)); });
+
+  $('#btn-som').addEventListener('click', () => { if (Voz.on) desligarSom(); else ligarSom(); });
+  $('#btn-teste').addEventListener('click', () => {
+    Voz.q.push({ letra: 'A', numero: 7, nome: 'Maria da Silva', areaNome: 'Financeiro' });
+    anunciar();
+  });
+  if (document.fullscreenEnabled){
+    const f = $('#btn-full'); f.hidden = false;
+    f.addEventListener('click', () => {
+      try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch(e){}
+    });
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') manterTelaLigada(); });
+  renderSom();
+
+  const hash = (location.hash || '').replace('#', '');
+  setView(NOMES[hash] ? hash : (ls.get('fila-view') || 'atendimento'));
+
+  setInterval(() => {
+    if (S.view === 'gerencia') renderGerencia();
+    if (S.view === 'painel') renderRelogio();
+  }, 20000);
+
+  let db = null, erroCon = '';
+  try { db = await conectar(); } catch(e){ erroCon = (e && e.message) || String(e); console.error(e); }
+  S.db = db;
+  if (!db){
+    S.senhasLoaded = true;
+    aviso('Não foi possível conectar ao banco de dados. ' + erroCon);
+    renderAll(); return;
+  }
+  const falha = e => aviso('Sem acesso aos dados da fila' + (e && e.code ? ' (' + e.code + ')' : '') + '. Confira as regras do Firestore (veja o README).');
+  db.collection('senhas').orderBy('criadoEm', 'desc').limit(400).onSnapshot(snap => {
+    const dia = hoje();
+    S.senhas = snap.docs.map(d => Object.assign({ id: d.id }, d.data(), S.contatos[d.id] || {})).filter(t => t.dia === dia);
+    S.senhasLoaded = true;
+    detectar(snap);
+    renderAll();
+  }, falha);
+
+  if (db.auth){
+    let offContatos = null;
+    db.auth.onChange(email => {
+      S.gerente = email;
+      if (offContatos){ offContatos(); offContatos = null; }
+      S.contatos = {};
+      if (email){
+        offContatos = db.collection('contatos').onSnapshot(snap => {
+          S.contatos = {};
+          snap.docs.forEach(d => { S.contatos[d.id] = d.data(); });
+          S.senhas.forEach(t => Object.assign(t, S.contatos[t.id] || {}));
+          renderAll();
+        }, () => {});
+      }
+      renderAll();
+    });
+  }
+}
+init();
+})();
+</script>
+</body>
+</html>
